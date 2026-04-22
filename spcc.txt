@@ -412,126 +412,124 @@ int main()
 
 --------------------------exp2------------------------------------------------------------------------------------------------------------------------------------
 
-import java.io.*;
+class MacroProcessor:
 
-class Macroprocessor {
-    public static void main(String args[]) {
+    def __init__(self):
+        self.mnt = []   # Macro Name Table
+        self.mdt = []   # Macro Definition Table
 
-        String code[][] = {
-            {"ADD","A","","",""},
-            {"MACRO","ADD1","&ARG","",""},
-            {"LOAD","ARG","","",""},
-            {"MEND","","","",""},
-            {"MACRO","PQR","&A","&B","&C"},
-            {"ADD","B","","",""},
-            {"READ","C","","",""},
-            {"READ","A","","",""},
-            {"MEND","","","",""},
-            {"MACRO","LMN","","",""},
-            {"LOAD","C","","",""},
-            {"MEND","","","",""},
-            {"LOAD","B","","",""},
-            {"PQR","5","3","2",""},
-            {"ADD1","1","","",""},
-            {"LMN","","","",""},
-            {"SUB","C","","",""},
-            {"ENDP","","","",""}
-        };
+    def pass1(self, code):
+        i = 0
 
-        String mn[] = new String[3];
-        String fpmn[] = new String[10];
-        String fp[] = new String[10];
-        String pp[] = new String[10];
+        while i < len(code):
+            if code[i][0] == "MACRO":
+                macro_name = code[i][1]
+                pnt = {}
+                param_index = 1
 
-        int parameter[] = new int[3];
-        int c = 0, d = 0, e = 0;
+                # Store parameters
+                for param in code[i][2:]:
+                    if param != "":
+                        pnt[param] = param_index
+                        param_index += 1
 
-        // PASS 1: Macro Name Table + Parameter Table
-        for (int i = 0; i < 18; i++) {
-            if (code[i][0].equals("MACRO")) {
-                mn[c] = code[i][1];
+                mdt_start = len(self.mdt)
+                self.mnt.append((macro_name, len(pnt), mdt_start))
 
-                for (int j = 2; j < 5; j++) {
-                    if (!code[i][j].equals("")) {
-                        fpmn[e] = code[i][1];
-                        fp[e] = code[i][j];
-                        pp[e] = "#" + (d + 1);
-                        d++;
-                        e++;
-                    }
-                }
-                parameter[c++] = d;
-                d = 0;
-            }
-        }
+                i += 1
 
-        // Display MNT
-        System.out.println("MACRO NAME TABLE");
-        System.out.println("Name\tNo. of Parameters");
-        for (int i = 0; i < c; i++) {
-            System.out.println(mn[i] + "\t" + parameter[i]);
-        }
+                # Store macro body
+                while code[i][0] != "MEND":
+                    line = code[i][0]
 
-        // Display MDT
-        System.out.println("\nMACRO DEFINITION TABLE");
-        int index = 1;
+                    if code[i][1] != "":
+                        operand = code[i][1]
 
-        for (int i = 0; i < 18; i++) {
-            if (code[i][0].equals("MACRO")) {
-                i++;
-                while (!code[i][0].equals("MEND")) {
-                    System.out.print(index++ + "\t" + code[i][0] + " ");
+                        if operand in pnt:
+                            operand = "#" + str(pnt[operand])
 
-                    boolean replaced = false;
-                    for (int j = 0; j < e; j++) {
-                        if (("&" + code[i][1]).equals(fp[j])) {
-                            System.out.println(pp[j]);
-                            replaced = true;
-                            break;
-                        }
-                    }
+                        line += " " + operand
 
-                    if (!replaced) {
-                        System.out.println(code[i][1]);
-                    }
-                    i++;
-                }
-                System.out.println(index++ + "\tMEND");
-            }
-        }
+                    self.mdt.append(line)
+                    i += 1
 
-        // Formal vs Positional
-        System.out.println("\nFORMAL vs POSITIONAL");
-        for (int i = 0; i < e; i++) {
-            System.out.println(fpmn[i] + "\t" + fp[i] + "\t" + pp[i]);
-        }
+                self.mdt.append("MEND")
+            i += 1
 
-        // PASS 2 Expansion
-        System.out.println("\nEXPANDED CODE:");
+    def pass2(self, code):
+        print("\nEXPANDED CODE:\n")
 
-        for (int i = 0; i < 18; i++) {
+        i = 0
 
-            if (code[i][0].equals("MACRO")) {
-                while (!code[i][0].equals("MEND")) i++;
-            }
-            else if (code[i][0].equals("PQR")) {
-                System.out.println("ADD " + code[i][2]);
-                System.out.println("READ " + code[i][3]);
-                System.out.println("READ " + code[i][1]);
-            }
-            else if (code[i][0].equals("ADD1")) {
-                System.out.println("LOAD " + code[i][1]);
-            }
-            else if (code[i][0].equals("LMN")) {
-                System.out.println("LOAD C");
-            }
-            else {
-                System.out.println(code[i][0] + " " + code[i][1]);
-            }
-        }
-    }
-}
+        while i < len(code):
 
+            if code[i][0] == "MACRO":
+                while code[i][0] != "MEND":
+                    i += 1
+
+            else:
+                is_macro = False
+
+                for entry in self.mnt:
+                    name, param_count, mdt_index = entry
+
+                    if name == code[i][0]:
+                        is_macro = True
+
+                        actual_params = code[i][1:1 + param_count]
+                        mdt_ptr = mdt_index
+
+                        while self.mdt[mdt_ptr] != "MEND":
+                            line = self.mdt[mdt_ptr]
+
+                            for k in range(len(actual_params)):
+                                line = line.replace("#" + str(k + 1), actual_params[k])
+
+                            print(line)
+                            mdt_ptr += 1
+                        break
+
+                if not is_macro:
+                    print(code[i][0], code[i][1])
+
+            i += 1
+
+
+# 🔹 INPUT CODE
+code = [
+    ["ADD","A","","",""],
+    ["MACRO","ADD1","&ARG","",""],
+    ["LOAD","&ARG","","",""],
+    ["MEND","","","",""],
+    ["MACRO","PQR","&A","&B","&C"],
+    ["ADD","&B","","",""],
+    ["READ","&C","","",""],
+    ["READ","&A","","",""],
+    ["MEND","","","",""],
+    ["MACRO","LMN","","",""],
+    ["LOAD","C","","",""],
+    ["MEND","","","",""],
+    ["LOAD","B","","",""],
+    ["PQR","5","3","2",""],
+    ["ADD1","1","","",""],
+    ["LMN","","","",""],
+    ["SUB","C","","",""],
+    ["ENDP","","","",""]
+]
+
+# 🔹 RUN
+mp = MacroProcessor()
+mp.pass1(code)
+
+print("MACRO NAME TABLE:")
+for m in mp.mnt:
+    print(m)
+
+print("\nMACRO DEFINITION TABLE:")
+for i, line in enumerate(mp.mdt):
+    print(i, line)
+
+mp.pass2(code)
 
 // Aim: to implement a two pass macro preprocessor.
 // Software Used: c, c++, java language
@@ -825,13 +823,12 @@ class Macroprocessor {
 import java.io.*;
 import java.util.*;
 
-public class Optimization {
+class Optimization {
     public static void main(String args[]) throws IOException {
 
         BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 
         String s1, s2;
-        String code[] = new String[10];
 
         System.out.println("Enter the string1:");
         s1 = in.readLine();
@@ -846,34 +843,45 @@ public class Optimization {
             System.out.println("Entered string is correct");
         }
 
-        System.out.println("Enter the number of lines of code:");
+        System.out.println("\nEnter the number of lines of code:");
         int n = Integer.parseInt(in.readLine());
 
-        System.out.println("Enter the code of program:");
+        String[] code = new String[n];
+
+        System.out.println("Enter the code:");
         for (int i = 0; i < n; i++) {
             code[i] = in.readLine();
         }
 
+        System.out.println("\n--- Dead Code Detection ---");
+
         for (int i = 0; i < n - 1; i++) {
-            char c[] = code[i].toCharArray();
-            char d[] = code[i + 1].toCharArray();
 
-            if (c.length > 4 && d.length > 3) {
-                if ((c[0] == 'i' || c[0] == 'I') &&
-                    (c[1] == 'n' || c[1] == 'N') &&
-                    (c[2] == 't' || c[2] == 'T')) {
+            String line1 = code[i].trim();
+            String line2 = code[i + 1].trim();
 
-                    if (d[3] == c[4]) {
-                        System.out.println("The line \"" + code[i + 1] + "\" will not be executed (dead code)");
+            // Check if line1 is declaration (int x)
+            if (line1.startsWith("int")) {
+
+                String[] parts1 = line1.split(" ");
+                if (parts1.length >= 2) {
+
+                    String varDeclared = parts1[1];
+
+                    // Remove semicolon if present
+                    varDeclared = varDeclared.replace(";", "");
+
+                    // Check if next line uses same variable
+                    if (line2.contains(varDeclared)) {
+                        System.out.println("Line \"" + line2 + "\" uses variable '" + varDeclared + "' → OK");
                     } else {
-                        System.out.println("Code is correct");
+                        System.out.println("Line \"" + line2 + "\" does NOT use variable '" + varDeclared + "' → Dead Code");
                     }
                 }
             }
         }
     }
 }
-
 
 // Aim: To perform code optimization, considering the target machine to be X86.
 // Software Used: c,c++,java language
